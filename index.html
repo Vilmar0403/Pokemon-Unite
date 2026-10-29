@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D MOBA Arena Prototype</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome for UI Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+        }
+
+        #game-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Cooldown Overlay Circular Animation */
+        .cooldown-overlay {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(2px);
+        }
+
+        /* Floating Damage Text Animation */
+        .damage-number {
+            position: absolute;
+            font-weight: 800;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(255,255,255,0.5);
+            pointer-events: none;
+            animation: floatUpAndFade 0.8s ease-out forwards;
+            transform: translate(-50%, -100%);
+        }
+
+        @keyframes floatUpAndFade {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, 0) scale(0.8);
+            }
+            30% {
+                transform: translate(-50%, -20px) scale(1.3);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50px) scale(1);
+            }
+        }
+
+        /* Touch Joystick styling */
+        .joystick-base {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            touch-action: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .joystick-thumb {
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(147,197,253,0.8) 100%);
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Ability Buttons Glow */
+        .btn-glow-blue { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        .btn-glow-purple { box-shadow: 0 0 15px rgba(168, 85, 247, 0.5); }
+        .btn-glow-orange { box-shadow: 0 0 20px rgba(249, 115, 22, 0.7); }
+        .btn-glow-green { box-shadow: 0 0 15px rgba(34, 197, 94, 0.5); }
+
+        .btn-active:active {
+            transform: scale(0.92);
+        }
+    </style>
+</head>
+<body class="relative">
+
+    <!-- Canvas Container -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- UI Overlay Layer -->
+    <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 z-10">
+        
+        <!-- Top Scoreboard & Header -->
+        <div class="flex justify-between items-start w-full">
+            <!-- Player Stats HUD -->
+            <div class="bg-slate-900/80 backdrop-blur-md text-white p-3 rounded-2xl border border-slate-700/50 flex items-center gap-4 shadow-lg pointer-events-auto">
+                <div class="relative">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center font-black text-slate-900 text-xl border-2 border-white shadow">
+                        ⚡
+                    </div>
+                    <span class="absolute -bottom-1 -right-1 bg-blue-600 text-xs px-1.5 py-0.5 rounded-full font-bold">Lv.10</span>
+                </div>
+                <div class="w-36">
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                        <span class="text-amber-400">寶可夢原型</span>
+                        <span id="hp-text">1000 / 1000</span>
+                    </div>
+                    <!-- HP Bar -->
+                    <div class="w-full bg-slate-800 rounded-full h-3 border border-slate-700 overflow-hidden">
+                        <div id="hp-bar" class="bg-gradient-to-r from-green-500 to-emerald-400 h-full w-full transition-all duration-200"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Score / Scoreboard -->
+            <div class="bg-slate-900/80 backdrop-blur-md text-white px-6 py-2 rounded-2xl border border-slate-700/50 flex items-center gap-6 shadow-lg">
+                <div class="text-center">
+                    <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">擊倒數</div>
+                    <div id="score-kills" class="text-2xl font-black text-amber-400">0</div>
+                </div>
+                <div class="h-8 w-px bg-slate-700"></div>
+                <div class="text-center">
+                    <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">時間</div>
+                    <div id="game-timer" class="text-2xl font-black text-white">03:00</div>
+                </div>
+            </div>
+
+            <!-- Controls Info Card (PC Helper) -->
+            <div id="pc-controls-guide" class="hidden md:flex flex-col bg-slate-900/80 backdrop-blur-md text-slate-300 p-3 rounded-2xl border border-slate-700/50 text-xs gap-1 shadow-lg pointer-events-auto">
+                <div class="font-bold text-amber-400 mb-1 border-b border-slate-700 pb-1">PC 操作說明</div>
+                <div><span class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono font-bold">WASD</span> : 移動方向</div>
+                <div><span class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono font-bold">滑鼠標</span> : 瞄準方向</div>
+                <div><span class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono font-bold">Z</span> : 普攻 (Basic Attack)</div>
+                <div><span class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono font-bold">C</span> : R招式 (Dash / 衝鋒)</div>
+                <div><span class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono font-bold">V</span> : ZR招式 (Skillshot / 電光)</div>
+                <div><span class="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono font-bold">X</span> : 集結招式 (Unite Move)</div>
+            </div>
+        </div>
+
+        <!-- Center Message Alert Overlay -->
+        <div id="announcement" class="self-center bg-slate-900/90 text-amber-400 px-6 py-2 rounded-full border-2 border-amber-500/50 text-lg font-black tracking-wide shadow-2xl transition-opacity duration-300 opacity-0 transform translate-y-[-20px]">
+            首殺！ First Blood!
+        </div>
+
+        <!-- Bottom Controls UI (Skills Bar for Mobile & PC) -->
+        <div class="w-full flex justify-between items-end pb-2">
+            <!-- Mobile Touch Left Virtual Joystick (Visible on touch devices or dynamically activated) -->
+            <div id="joystick-container" class="relative w-36 h-36 pointer-events-auto opacity-80 hover:opacity-100 transition-opacity">
+                <div class="joystick-base" id="joystick-base">
+                    <div class="joystick-thumb" id="joystick-thumb"></div>
+                </div>
+            </div>
+
+            <!-- Skill Action Buttons Bar -->
+            <div class="flex items-end gap-3 md:gap-4 pointer-events-auto">
+                <!-- Basic Attack Z -->
+                <div class="relative flex flex-col items-center">
+                    <button id="btn-attack" class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 text-white font-black text-xl flex items-center justify-center border-2 border-white/80 btn-glow-blue btn-active transition-all relative overflow-hidden">
+                        <i class="fa-solid fa-bolt"></i>
+                        <!-- Cooldown overlay -->
+                        <div id="cd-z" class="cooldown-overlay absolute inset-0 hidden flex items-center justify-center text-white font-bold text-sm">
+                            <span id="cd-z-text">0.0</span>
+                        </div>
+                    </button>
+                    <span class="text-[10px] md:text-xs font-extrabold text-white mt-1 bg-slate-900/80 px-2 py-0.5 rounded-full border border-slate-700">Z / 普攻</span>
+                </div>
+
+                <!-- Skill 1 (C / R招) -->
+                <div class="relative flex flex-col items-center mb-2">
+                    <button id="btn-skill1" class="w-16 h-16 md:w-18 md:h-18 rounded-full bg-gradient-to-tr from-emerald-600 to-green-400 text-white font-black text-xl flex items-center justify-center border-2 border-white/80 btn-glow-green btn-active transition-all relative overflow-hidden">
+                        <i class="fa-solid fa-wind"></i>
+                        <div id="cd-c" class="cooldown-overlay absolute inset-0 hidden flex items-center justify-center text-white font-bold text-sm">
+                            <span id="cd-c-text">0.0</span>
+                        </div>
+                    </button>
+                    <span class="text-[10px] md:text-xs font-extrabold text-white mt-1 bg-slate-900/80 px-2 py-0.5 rounded-full border border-slate-700">C / R招</span>
+                </div>
+
+                <!-- Skill 2 (V / ZR招) -->
+                <div class="relative flex flex-col items-center mb-4">
+                    <button id="btn-skill2" class="w-16 h-16 md:w-18 md:h-18 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-400 text-white font-black text-xl flex items-center justify-center border-2 border-white/80 btn-glow-purple btn-active transition-all relative overflow-hidden">
+                        <i class="fa-solid fa-meteor"></i>
+                        <div id="cd-v" class="cooldown-overlay absolute inset-0 hidden flex items-center justify-center text-white font-bold text-sm">
+                            <span id="cd-v-text">0.0</span>
+                        </div>
+                    </button>
+                    <span class="text-[10px] md:text-xs font-extrabold text-white mt-1 bg-slate-900/80 px-2 py-0.5 rounded-full border border-slate-700">V / ZR招</span>
+                </div>
+
+                <!-- Ultimate Skill (X / 集結招式) -->
+                <div class="relative flex flex-col items-center mb-6">
+                    <button id="btn-ult" class="w-20 h-20 md:w-22 md:h-22 rounded-full bg-gradient-to-tr from-amber-500 to-red-500 text-white font-black text-2xl flex items-center justify-center border-4 border-yellow-300 btn-glow-orange btn-active transition-all relative overflow-hidden">
+                        <i class="fa-solid fa-crown text-yellow-200"></i>
+                        <div id="cd-x" class="cooldown-overlay absolute inset-0 hidden flex items-center justify-center text-white font-bold text-base">
+                            <span id="cd-x-text">0.0</span>
+                        </div>
+                    </button>
+                    <span class="text-[10px] md:text-xs font-extrabold text-amber-300 mt-1 bg-slate-900/90 px-2 py-0.5 rounded-full border border-amber-500/50">X / 集結招式</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Damage Container Layer -->
+    <div id="damage-text-layer" class="absolute inset-0 pointer-events-none z-20"></div>
+
+    <!-- MAIN GAME LOGIC SCRIPT -->
+    <script>
+        // --- 1. GAME STATE & VARIABLES ---
+        const gameState = {
+            player: {
+                hp: 1000,
+                maxHp: 1000,
+                speed: 12,
+                kills: 0,
+                position: new THREE.Vector3(0, 0, 0),
+                rotation: 0
+            },
+            cooldowns: {
+                z: { max: 0.4, current: 0 },   // Basic Attack
+                c: { max: 4.0, current: 0 },   // Skill 1 (Dash)
+                v: { max: 6.0, current: 0 },   // Skill 2 (Ranged Skillshot)
+                x: { max: 12.0, current: 0 }   // Ultimate
+            },
+            keys: { w: false, a: false, s: false, d: false },
+            mousePosWorld: new THREE.Vector3(),
+            joystickVector: { x: 0, y: 0 }
+        };
+
+        // Entities arrays
+        let projectiles = [];
+        let enemies = [];
+        let particles = [];
+
+        // --- 2. THREE.JS ENGINE SETUP ---
+        const canvas = document.getElementById('game-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.012);
+
+        // Isometric Camera setup
+        const aspect = window.innerWidth / window.innerHeight;
+        const camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+        const cameraOffset = new THREE.Vector3(0, 22, 18); // Elevated isometric viewpoint
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 100;
+        const d = 30;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        scene.add(dirLight);
+
+        // --- 3. ARENA CREATION ---
+        function buildArena() {
+            // Main Grass Floor
+            const groundGeo = new THREE.PlaneGeometry(80, 80);
+            const groundMat = new THREE.MeshStandardMaterial({ 
+                color: 0x1e3a29, 
+                roughness: 0.8,
+                metalness: 0.1 
+            });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Grid Pattern / Field Lines
+            const gridHelper = new THREE.GridHelper(80, 40, 0x3b82f6, 0x1e293b);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
+
+            // Arena Outer Boundary Walls
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 });
+            const createWall = (w, h, d, x, y, z) => {
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
+                wall.position.set(x, y, z);
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                scene.add(wall);
+            };
+            createWall(80, 3, 2, 0, 1.5, -40);
+            createWall(80, 3, 2, 0, 1.5, 40);
+            createWall(2, 3, 80, -40, 1.5, 0);
+            createWall(2, 3, 80, 40, 1.5, 0);
+
+            // Decorative Obstacles / Goal Zones (Pokemon Unite style)
+            const goalGeo = new THREE.CylinderGeometry(4, 4, 0.2, 32);
+            const goalMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.4 });
+            const allyGoal = new THREE.Mesh(goalGeo, goalMat);
+            allyGoal.position.set(0, 0.05, 20);
+            scene.add(allyGoal);
+
+            const enemyGoalMat = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.4 });
+            const enemyGoal = new THREE.Mesh(goalGeo, enemyGoalMat);
+            enemyGoal.position.set(0, 0.05, -20);
+            scene.add(enemyGoal);
+        }
+        buildArena();
+
+        // --- 4. PLAYER & AIM INDICATOR CREATION ---
+        let playerMesh, skillIndicatorMesh;
+
+        function createPlayer() {
+            const group = new THREE.Group();
+
+            // Character body (Cute Creature Base)
+            const bodyGeo = new THREE.SphereGeometry(1, 32, 32);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3, metalness: 0.2 }); // Electric Yellow
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 1;
+            body.castShadow = true;
+            group.add(body);
+
+            // Character Ears / Features
+            const earGeo = new THREE.ConeGeometry(0.3, 1, 16);
+            const earMat = new THREE.MeshStandardMaterial({ color: 0xca8a04 });
+            const earLeft = new THREE.Mesh(earGeo, earMat);
+            earLeft.position.set(-0.5, 1.8, 0);
+            earLeft.rotation.z = 0.3;
+            group.add(earLeft);
+
+            const earRight = new THREE.Mesh(earGeo, earMat);
+            earRight.position.set(0.5, 1.8, 0);
+            earRight.rotation.z = -0.3;
+            group.add(earRight);
+
+            // Eyes (Facing direction)
+            const eyeGeo = new THREE.SphereGeometry(0.15, 16, 16);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+            const eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeLeft.position.set(-0.35, 1.2, 0.85);
+            group.add(eyeLeft);
+
+            const eyeRight = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeRight.position.set(0.35, 1.2, 0.85);
+            group.add(eyeRight);
+
+            scene.add(group);
+            playerMesh = group;
+
+            // Ground Skill Aim Arrow Indicator
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 0);
+            shape.lineTo(-0.8, -2);
+            shape.lineTo(-0.3, -2);
+            shape.lineTo(-0.3, -6);
+            shape.lineTo(0.3, -6);
+            shape.lineTo(0.3, -2);
+            shape.lineTo(0.8, -2);
+            shape.closePath();
+
+            const indicatorGeo = new THREE.ShapeGeometry(shape);
+            const indicatorMat = new THREE.MeshBasicMaterial({ 
+                color: 0x38bdf8, 
+                side: THREE.DoubleSide, 
+                transparent: true, 
+                opacity: 0.6 
+            });
+            skillIndicatorMesh = new THREE.Mesh(indicatorGeo, indicatorMat);
+            skillIndicatorMesh.rotation.x = Math.PI / 2;
+            skillIndicatorMesh.rotation.z = Math.PI;
+            skillIndicatorMesh.position.y = 0.05;
+            scene.add(skillIndicatorMesh);
+        }
+        createPlayer();
+
+        // --- 5. ENEMY TARGET DUMMIES CREATION ---
+        function createDummyEnemy(x, z) {
+            const group = new THREE.Group();
+            
+            // Body
+            const bodyGeo = new THREE.CylinderGeometry(0.9, 0.9, 2, 16);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.5 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 1;
+            body.castShadow = true;
+            group.add(body);
+
+            // Target ring outline
+            const ringGeo = new THREE.RingGeometry(1.2, 1.4, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = 0.02;
+            group.add(ring);
+
+            group.position.set(x, 0, z);
+            scene.add(group);
+
+            enemies.push({
+                mesh: group,
+                hp: 1500,
+                maxHp: 1500,
+                radius: 1.0,
+                alive: true
+            });
+        }
+
+        // Spawn a few enemy targets
+        createDummyEnemy(0, -10);
+        createDummyEnemy(-10, -15);
+        createDummyEnemy(10, -15);
+
+        // --- 6. CONTROLS & INPUT SYSTEM (PC & MOBILE) ---
+        
+        // Raycaster for mouse position detection on ground plane
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+        // Mouse Move Aiming
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const targetPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(groundPlane, targetPoint);
+            if (targetPoint) {
+                gameState.mousePosWorld.copy(targetPoint);
+            }
+        });
+
+        // Keydown Events (WASD & Skill Hotkeys)
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w') gameState.keys.w = true;
+            if (key === 'a') gameState.keys.a = true;
+            if (key === 's') gameState.keys.s = true;
+            if (key === 'd') gameState.keys.d = true;
+
+            // Skill Hotkeys
+            if (key === 'z') castBasicAttack();
+            if (key === 'c') castSkill1();
+            if (key === 'v') castSkill2();
+            if (key === 'x') castUltimate();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w') gameState.keys.w = false;
+            if (key === 'a') gameState.keys.a = false;
+            if (key === 's') gameState.keys.s = false;
+            if (key === 'd') gameState.keys.d = false;
+        });
+
+        // Virtual Touch Joystick Implementation
+        const joystickBase = document.getElementById('joystick-base');
+        const joystickThumb = document.getElementById('joystick-thumb');
+        let joystickActive = false;
+        let joystickTouchId = null;
+
+        joystickBase.addEventListener('touchstart', (e) => {
+            joystickActive = true;
+            const touch = e.changedTouches[0];
+            joystickTouchId = touch.identifier;
+            updateJoystick(touch);
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!joystickActive) return;
+            for (let touch of e.changedTouches) {
+                if (touch.identifier === joystickTouchId) {
+                    updateJoystick(touch);
+                }
+            }
+        }, { passive: false });
+
+        const endJoystick = (e) => {
+            if (!joystickActive) return;
+            for (let touch of e.changedTouches) {
+                if (touch.identifier === joystickTouchId) {
+                    joystickActive = false;
+                    joystickThumb.style.transform = `translate(0px, 0px)`;
+                    gameState.joystickVector = { x: 0, y: 0 };
+                }
+            }
+        };
+
+        window.addEventListener('touchend', endJoystick);
+        window.addEventListener('touchcancel', endJoystick);
+
+        function updateJoystick(touch) {
+            const rect = joystickBase.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            let deltaX = touch.clientX - centerX;
+            let deltaY = touch.clientY - centerY;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            const maxRadius = rect.width / 2;
+
+            if (distance > maxRadius) {
+                deltaX = (deltaX / distance) * maxRadius;
+                deltaY = (deltaY / distance) * maxRadius;
+            }
+
+            joystickThumb.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            gameState.joystickVector = {
+                x: deltaX / maxRadius,
+                y: deltaY / maxRadius
+            };
+        }
+
+        // On-screen Button Listeners for Mobile Touch
+        document.getElementById('btn-attack').addEventListener('click', castBasicAttack);
+        document.getElementById('btn-skill1').addEventListener('click', castSkill1);
+        document.getElementById('btn-skill2').addEventListener('click', castSkill2);
+        document.getElementById('btn-ult').addEventListener('click', castUltimate);
+
+        // --- 7. ABILITIES & SKILL CASTING LOGIC ---
+
+        function getAimDirection() {
+            // Priority: Mouse Direction -> Player Forward Direction
+            const aimDir = new THREE.Vector3().subVectors(gameState.mousePosWorld, playerMesh.position);
+            aimDir.y = 0;
+            if (aimDir.lengthSq() < 0.1) {
+                playerMesh.getWorldDirection(aimDir);
+            } else {
+                aimDir.normalize();
+            }
+            return aimDir;
+        }
+
+        // Z - Basic Attack (Fast Bolt)
+        function castBasicAttack() {
+            if (gameState.cooldowns.z.current > 0) return;
+            gameState.cooldowns.z.current = gameState.cooldowns.z.max;
+
+            const dir = getAimDirection();
+
+            // Spawn Projectile
+            const projGeo = new THREE.SphereGeometry(0.3, 16, 16);
+            const projMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+            const proj = new THREE.Mesh(projGeo, projMat);
+            proj.position.copy(playerMesh.position).add(new THREE.Vector3(0, 1, 0));
+            scene.add(proj);
+
+            projectiles.push({
+                mesh: proj,
+                dir: dir,
+                speed: 30,
+                damage: 120,
+                life: 1.0,
+                radius: 0.5,
+                color: '#38bdf8'
+            });
+        }
+
+        // C - Skill 1 / R招 (Quick Dash Attack)
+        function castSkill1() {
+            if (gameState.cooldowns.c.current > 0) return;
+            gameState.cooldowns.c.current = gameState.cooldowns.c.max;
+
+            const dir = getAimDirection();
+            
+            // Dash player forward
+            const dashDistance = 7;
+            const targetPos = playerMesh.position.clone().add(dir.clone().multiplyScalar(dashDistance));
+            
+            // Keep inside arena boundaries
+            targetPos.x = Math.max(-38, Math.min(38, targetPos.x));
+            targetPos.z = Math.max(-38, Math.min(38, targetPos.z));
+
+            // Create trail particle effect
+            for(let i = 0; i < 10; i++) {
+                spawnParticle(
+                    playerMesh.position.clone().lerp(targetPos, i/10).add(new THREE.Vector3(0, 1, 0)),
+                    0x22c55e, 0.6
+                );
+            }
+
+            playerMesh.position.copy(targetPos);
+
+            // Deal AoE damage around landing position
+            enemies.forEach(enemy => {
+                if (!enemy.alive) return;
+                if (enemy.mesh.position.distanceTo(playerMesh.position) < 3.5) {
+                    damageEnemy(enemy, 280, '#22c55e');
+                }
+            });
+        }
+
+        // V - Skill 2 / ZR招 (Lightning Skillshot)
+        function castSkill2() {
+            if (gameState.cooldowns.v.current > 0) return;
+            gameState.cooldowns.v.current = gameState.cooldowns.v.max;
+
+            const dir = getAimDirection();
+
+            // Large Energy Ball Skillshot
+            const projGeo = new THREE.SphereGeometry(0.7, 16, 16);
+            const projMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0x9333ea });
+            const proj = new THREE.Mesh(projGeo, projMat);
+            proj.position.copy(playerMesh.position).add(new THREE.Vector3(0, 1, 0));
+            scene.add(proj);
+
+            projectiles.push({
+                mesh: proj,
+                dir: dir,
+                speed: 22,
+                damage: 420,
+                life: 1.5,
+                radius: 0.9,
+                color: '#c084fc'
+            });
+        }
+
+        // X - Unite Move / Ultimate (Massive Energy Explosion)
+        function castUltimate() {
+            if (gameState.cooldowns.x.current > 0) return;
+            gameState.cooldowns.x.current = gameState.cooldowns.x.max;
+
+            // Visual Blast Ring
+            const ringGeo = new THREE.RingGeometry(0.1, 7, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+            const blast = new THREE.Mesh(ringGeo, ringMat);
+            blast.rotation.x = Math.PI / 2;
+            blast.position.copy(playerMesh.position);
+            blast.position.y = 0.1;
+            scene.add(blast);
+
+            // Animate Blast Expansion & Fade
+            let scale = 0.1;
+            const blastInterval = setInterval(() => {
+                scale += 0.15;
+                blast.scale.set(scale, scale, scale);
+                ringMat.opacity -= 0.05;
+                if (ringMat.opacity <= 0) {
+                    clearInterval(blastInterval);
+                    scene.remove(blast);
+                }
+            }, 16);
+
+            // Deal Massive Damage to all nearby enemies
+            enemies.forEach(enemy => {
+                if (!enemy.alive) return;
+                const dist = enemy.mesh.position.distanceTo(playerMesh.position);
+                if (dist < 7.5) {
+                    damageEnemy(enemy, 850, '#fbbf24');
+                }
+            });
+
+            showAnnouncement("⚡ 集結招式發動！ UNITE MOVE!");
+        }
+
+        // Damage Calculation & Floating Text Display
+        function damageEnemy(enemy, amount, colorHex) {
+            enemy.hp -= amount;
+            spawnFloatingText(`-${amount}`, enemy.mesh.position, colorHex);
+
+            // Hit Particles
+            for(let i=0; i<6; i++) {
+                spawnParticle(enemy.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), 0xef4444, 0.4);
+            }
+
+            if (enemy.hp <= 0 && enemy.alive) {
+                enemy.alive = false;
+                scene.remove(enemy.mesh);
+                gameState.player.kills++;
+                document.getElementById('score-kills').innerText = gameState.player.kills;
+                showAnnouncement("擊倒敵方寶可夢！ Enemy Defeated!");
+
+                // Respawn enemy after 4 seconds
+                setTimeout(() => {
+                    enemy.hp = enemy.maxHp;
+                    enemy.alive = true;
+                    scene.add(enemy.mesh);
+                }, 4000);
+            }
+        }
+
+        // Spawn Floating Damage Text in HTML Overlay
+        function spawnFloatingText(text, worldPos, color) {
+            const screenPos = worldPos.clone().add(new THREE.Vector3(0, 2, 0)).project(camera);
+            const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-(screenPos.y * 0.5) + 0.5) * window.innerHeight;
+
+            const el = document.createElement('div');
+            el.className = 'damage-number';
+            el.innerText = text;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.style.color = color || '#fff';
+
+            document.getElementById('damage-text-layer').appendChild(el);
+            setTimeout(() => el.remove(), 800);
+        }
+
+        // Particle System Helper
+        function spawnParticle(pos, color, duration) {
+            const pGeo = new THREE.SphereGeometry(0.2, 8, 8);
+            const pMat = new THREE.MeshBasicMaterial({ color: color });
+            const p = new THREE.Mesh(pGeo, pMat);
+            p.position.copy(pos);
+            scene.add(p);
+
+            const vel = new THREE.Vector3(
+                (Math.random() - 0.5) * 4,
+                Math.random() * 4,
+                (Math.random() - 0.5) * 4
+            );
+
+            particles.push({ mesh: p, vel: vel, life: duration });
+        }
+
+        function showAnnouncement(msg) {
+            const el = document.getElementById('announcement');
+            el.innerText = msg;
+            el.classList.remove('opacity-0', 'translate-y-[-20px]');
+            el.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                el.classList.remove('opacity-100', 'translate-y-0');
+                el.classList.add('opacity-0', 'translate-y-[-20px]');
+            }, 2000);
+        }
+
+        // --- 8. MAIN GAME LOOP & UPDATES ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            // Update Cooldown Timers
+            for (let key in gameState.cooldowns) {
+                if (gameState.cooldowns[key].current > 0) {
+                    gameState.cooldowns[key].current -= delta;
+                    if (gameState.cooldowns[key].current < 0) gameState.cooldowns[key].current = 0;
+                }
+            }
+            updateCooldownUI();
+
+            // --- Player Movement Calculation ---
+            let moveX = 0;
+            let moveZ = 0;
+
+            // Keyboard WASD
+            if (gameState.keys.w) moveZ -= 1;
+            if (gameState.keys.s) moveZ += 1;
+            if (gameState.keys.a) moveX -= 1;
+            if (gameState.keys.d) moveX += 1;
+
+            // Mobile Joystick override
+            if (gameState.joystickVector.x !== 0 || gameState.joystickVector.y !== 0) {
+                moveX = gameState.joystickVector.x;
+                moveZ = gameState.joystickVector.y;
+            }
+
+            const moveDir = new THREE.Vector3(moveX, 0, moveZ);
+            if (moveDir.lengthSq() > 0) {
+                moveDir.normalize();
+                playerMesh.position.add(moveDir.multiplyScalar(gameState.player.speed * delta));
+
+                // Restrict player inside arena borders
+                playerMesh.position.x = Math.max(-38, Math.min(38, playerMesh.position.x));
+                playerMesh.position.z = Math.max(-38, Math.min(38, playerMesh.position.z));
+            }
+
+            // --- Player Rotation (Face Mouse / Aim Direction) ---
+            const aimDir = getAimDirection();
+            const angle = Math.atan2(aimDir.x, aimDir.z);
+            playerMesh.rotation.y = angle;
+
+            // Update Skill Indicator Arrow position & angle
+            skillIndicatorMesh.position.copy(playerMesh.position);
+            skillIndicatorMesh.position.y = 0.05;
+            skillIndicatorMesh.rotation.z = angle + Math.PI;
+
+            // --- Camera Tracking ---
+            camera.position.copy(playerMesh.position).add(cameraOffset);
+            camera.lookAt(playerMesh.position);
+
+            // --- Projectiles Update ---
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.mesh.position.add(p.dir.clone().multiplyScalar(p.speed * delta));
+                p.life -= delta;
+
+                // Check Enemy Hit Collisions
+                let hit = false;
+                enemies.forEach(enemy => {
+                    if (!enemy.alive || hit) return;
+                    if (p.mesh.position.distanceTo(enemy.mesh.position) < p.radius + enemy.radius) {
+                        damageEnemy(enemy, p.damage, p.color);
+                        hit = true;
+                    }
+                });
+
+                if (hit || p.life <= 0) {
+                    scene.remove(p.mesh);
+                    projectiles.splice(i, 1);
+                }
+            }
+
+            // --- Particles Update ---
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pt = particles[i];
+                pt.mesh.position.add(pt.vel.clone().multiplyScalar(delta));
+                pt.life -= delta;
+                if (pt.life <= 0) {
+                    scene.remove(pt.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // Update UI Cooldown Display Badges
+        function updateCooldownUI() {
+            const keys = ['z', 'c', 'v', 'x'];
+            keys.forEach(k => {
+                const cd = gameState.cooldowns[k];
+                const overlay = document.getElementById(`cd-${k}`);
+                const text = document.getElementById(`cd-${k}-text`);
+
+                if (cd.current > 0) {
+                    overlay.classList.remove('hidden');
+                    text.innerText = cd.current.toFixed(1);
+                } else {
+                    overlay.classList.add('hidden');
+                }
+            });
+        }
+
+        // Game Timer Countdown
+        let totalSeconds = 180;
+        setInterval(() => {
+            if (totalSeconds > 0) {
+                totalSeconds--;
+                const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+                const s = (totalSeconds % 60).toString().padStart(2, '0');
+                document.getElementById('game-timer').innerText = `${m}:${s}`;
+            }
+        }, 1000);
+
+        // Window Resize Listener
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start Loop on Window Load
+        window.onload = () => {
+            animate();
+        };
+    </script>
+</body>
+</html>
