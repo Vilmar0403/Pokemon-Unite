@@ -4,70 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>3D MOBA Arena Prototype</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js (cdnjs 穩定來源) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            user-select: none;
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden; user-select: none;
             -webkit-user-select: none;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #000;
         }
-        #game-container {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            pointer-events: none;
-        }
-        .interactive {
-            pointer-events: auto;
-        }
-        .skill-btn {
-            touch-action: manipulation;
-            transition: transform 0.1s;
-        }
-        .skill-btn:active {
-            transform: scale(0.9);
-        }
-        .joystick-container {
-            touch-action: none;
-        }
+        #game-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        .interactive { pointer-events: auto; }
+        .skill-btn { touch-action: manipulation; transition: transform 0.1s; }
+        .skill-btn:active { transform: scale(0.9); }
+        .joystick-container { touch-action: none; }
     </style>
 </head>
 <body>
 
-    <!-- 3D 遊戲繪圖區域 -->
     <div id="game-container"></div>
 
-    <!-- UI 圖層 -->
     <div id="ui-layer" class="flex flex-col justify-between p-4">
-        
-        <!-- 頂部資訊欄 -->
+        <!-- 頂部 UI -->
         <div class="flex justify-between items-start">
-            <!-- 玩家狀態 -->
             <div class="bg-gray-900/80 backdrop-blur border border-yellow-500/50 rounded-xl p-3 flex items-center space-x-3 text-white shadow-lg interactive">
                 <div class="relative">
-                    <div class="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center font-bold text-xl border-2 border-white shadow">
-                        ⚡
-                    </div>
+                    <div class="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center font-bold text-xl border-2 border-white shadow">⚡</div>
                     <span id="player-level" class="absolute -bottom-1 -right-1 bg-blue-600 text-xs px-1.5 py-0.5 rounded-full font-bold border border-white">Lv.1</span>
                 </div>
                 <div>
@@ -75,18 +40,15 @@
                         <span class="text-amber-400">寶可夢原型</span>
                         <span id="hp-text" class="text-gray-300">1000 / 1000</span>
                     </div>
-                    <!-- 血量條 -->
                     <div class="w-36 h-3 bg-gray-700 rounded-full overflow-hidden p-0.5 border border-gray-600">
                         <div id="hp-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-200" style="width: 100%;"></div>
                     </div>
-                    <!-- 經驗值條 -->
                     <div class="w-36 h-1.5 bg-gray-800 rounded-full overflow-hidden mt-1">
                         <div id="exp-bar" class="h-full bg-blue-400 rounded-full transition-all duration-200" style="width: 0%;"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- 計分板 -->
             <div class="bg-gray-900/80 backdrop-blur border border-gray-700 rounded-xl px-6 py-2 text-white flex space-x-6 text-center shadow-lg">
                 <div>
                     <div class="text-xs text-gray-400">擊倒數</div>
@@ -99,7 +61,6 @@
                 </div>
             </div>
 
-            <!-- PC 操作說明提示 -->
             <div class="hidden md:block bg-gray-900/80 backdrop-blur border border-gray-700 rounded-xl p-3 text-white text-xs space-y-1 shadow-lg interactive">
                 <div class="font-bold text-amber-400 mb-1">PC 操作說明</div>
                 <div><kbd class="bg-gray-700 px-1 rounded text-amber-300">WASD</kbd> : 移動方向</div>
@@ -111,26 +72,21 @@
             </div>
         </div>
 
-        <!-- 底部控制區 (手機/觸控介面) -->
+        <!-- 底部 UI -->
         <div class="flex justify-between items-end pb-2">
-            <!-- 左搖桿區域 -->
             <div id="joystick-zone" class="w-36 h-36 bg-gray-800/40 border-2 border-gray-500/30 rounded-full relative flex items-center justify-center joystick-container interactive md:opacity-50">
                 <div id="joystick-thumb" class="w-14 h-14 bg-white/30 rounded-full border border-white/50 absolute shadow-lg"></div>
             </div>
 
-            <!-- 右側技能按鈕群 -->
             <div class="flex flex-col items-end space-y-2 interactive">
                 <div class="flex items-end space-x-2">
-                    <!-- ZR 招式 (V) -->
                     <div class="relative">
-                        <button id="btn-v" class="skill-btn w-14 h-14 rounded-full bg-purple-600 border-2 border-purple-300 text-white font-bold flex flex-col items-center justify-center shadow-lg active:bg-purple-700">
+                        <button id="btn-v" class="skill-btn w-14 h-14 rounded-full bg-purple-600 border-2 border-purple-300 text-white font-bold flex flex-col items-center justify-center shadow-lg">
                             <span class="text-sm">⚡</span>
                             <span class="text-[10px]">V / ZR招</span>
                         </button>
-                        <div id="cd-v" class="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center text-white font-bold text-sm hidden">3.0</div>
+                        <div id="cd-v" class="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center text-white font-bold text-sm hidden">4.0</div>
                     </div>
-
-                    <!-- 集結招式 (X) -->
                     <div class="relative -top-4">
                         <button id="btn-x" class="skill-btn w-16 h-16 rounded-full bg-gradient-to-r from-amber-500 to-red-500 border-2 border-yellow-200 text-white font-bold flex flex-col items-center justify-center shadow-xl">
                             <span class="text-base">👑</span>
@@ -139,9 +95,7 @@
                         <div id="cd-x" class="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center text-white font-bold text-sm hidden">12.0</div>
                     </div>
                 </div>
-
                 <div class="flex items-center space-x-3 pr-2">
-                    <!-- 普攻 (Z) -->
                     <div class="relative">
                         <button id="btn-z" class="skill-btn w-14 h-14 rounded-full bg-blue-600 border-2 border-blue-300 text-white font-bold flex flex-col items-center justify-center shadow-lg">
                             <span class="text-sm">⚔️</span>
@@ -149,50 +103,32 @@
                         </button>
                         <div id="cd-z" class="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center text-white font-bold text-xs hidden">0.4</div>
                     </div>
-
-                    <!-- R 招式 (C) -->
                     <div class="relative">
                         <button id="btn-c" class="skill-btn w-14 h-14 rounded-full bg-emerald-600 border-2 border-emerald-300 text-white font-bold flex flex-col items-center justify-center shadow-lg">
                             <span class="text-sm">💨</span>
                             <span class="text-[10px]">C / R招</span>
                         </button>
-                        <div id="cd-c" class="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center text-white font-bold text-sm hidden">2.0</div>
+                        <div id="cd-c" class="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center text-white font-bold text-sm hidden">2.5</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 遊戲主邏輯 -->
     <script>
-        // -------------------------------------------------------------
-        // 1. 全局變數與遊戲設定
-        // -------------------------------------------------------------
         let scene, camera, renderer;
         let player, aimArrow;
-        let dummies = [];
+        let bots = [];
         let projectiles = [];
         let particles = [];
         
-        // 玩家狀態
-        const playerStats = {
-            hp: 1000,
-            maxHp: 1000,
-            level: 1,
-            exp: 0,
-            maxExp: 100,
-            speed: 0.18,
-            kills: 0
-        };
-
-        // 按鍵與輸入控制
+        const playerStats = { hp: 1000, maxHp: 1000, level: 1, exp: 0, maxExp: 100, speed: 0.18, kills: 0 };
         const keys = { w: false, a: false, s: false, d: false };
         const mousePos = new THREE.Vector2();
         const raycaster = new THREE.Raycaster();
         const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
         let mouseAimDir = new THREE.Vector3(0, 0, -1);
 
-        // 技能冷卻系統 (秒)
         const cooldowns = {
             z: { current: 0, max: 0.4, el: null, cdEl: null },
             c: { current: 0, max: 2.5, el: null, cdEl: null },
@@ -202,387 +138,176 @@
 
         let gameStartTime = Date.now();
 
-        // -------------------------------------------------------------
-        // 2. 初始化 Three.js 3D 場景
-        // -------------------------------------------------------------
         function init() {
             const container = document.getElementById('game-container');
-
-            // Scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a2b1a); // 深綠地表底色
-            scene.fog = new THREE.FogExp2(0x1a2b1a, 0.015);
+            scene.background = new THREE.Color(0x1a2b1a);
 
-            // Camera (俯瞰视角)
             const aspect = window.innerWidth / window.innerHeight;
             camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
             camera.position.set(0, 32, 22);
             camera.lookAt(0, 0, 0);
 
-            // Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.appendChild(renderer.domElement);
 
-            // 光源
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(20, 40, 20);
             dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
-            dirLight.shadow.camera.near = 0.5;
-            dirLight.shadow.camera.far = 150;
-            const d = 40;
-            dirLight.shadow.camera.left = -d;
-            dirLight.shadow.camera.right = d;
-            dirLight.shadow.camera.top = d;
-            dirLight.shadow.camera.bottom = -d;
             scene.add(dirLight);
 
-            // 建立地圖與環境
             createArena();
-
-            // 建立玩家角色
             createPlayer();
-
-            // 建立瞄準指示器
             createAimIndicator();
+            spawnBots();
 
-            // 產生野怪/練習木靶
-            spawnDummies();
+            cooldowns.z.el = document.getElementById('btn-z'); cooldowns.z.cdEl = document.getElementById('cd-z');
+            cooldowns.c.el = document.getElementById('btn-c'); cooldowns.c.cdEl = document.getElementById('cd-c');
+            cooldowns.v.el = document.getElementById('btn-v'); cooldowns.v.cdEl = document.getElementById('cd-v');
+            cooldowns.x.el = document.getElementById('btn-x'); cooldowns.x.cdEl = document.getElementById('cd-x');
 
-            // 綁定 DOM 技能元素
-            cooldowns.z.el = document.getElementById('btn-z');
-            cooldowns.z.cdEl = document.getElementById('cd-z');
-            cooldowns.c.el = document.getElementById('btn-c');
-            cooldowns.c.cdEl = document.getElementById('cd-c');
-            cooldowns.v.el = document.getElementById('btn-v');
-            cooldowns.v.cdEl = document.getElementById('cd-v');
-            cooldowns.x.el = document.getElementById('btn-x');
-            cooldowns.x.cdEl = document.getElementById('cd-x');
-
-            // 監聽事件
             setupInputs();
-
-            // 開始繪製迴圈
             animate();
         }
 
-        // -------------------------------------------------------------
-        // 3. 場景物件建立
-        // -------------------------------------------------------------
         function createArena() {
-            // 地面草地
             const groundGeo = new THREE.PlaneGeometry(80, 80);
             const groundMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.8 });
             const ground = new THREE.Mesh(groundGeo, groundMat);
             ground.rotation.x = -Math.PI / 2;
             ground.receiveShadow = true;
             scene.add(ground);
-
-            // 中央得分圈 / 得分點 UI 視覺
-            const goalGeo = new THREE.RingGeometry(3, 3.5, 32);
-            const goalMat = new THREE.MeshBasicMaterial({ color: 0xffb300, side: THREE.DoubleSide });
-            const goalZone = new THREE.Mesh(goalGeo, goalMat);
-            goalZone.rotation.x = -Math.PI / 2;
-            goalZone.position.y = 0.02;
-            scene.add(goalZone);
-
-            // 地圖邊界牆壁
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x1b5e20 });
-            const wallGeo = new THREE.BoxGeometry(80, 4, 2);
-
-            const nWall = new THREE.Mesh(wallGeo, wallMat);
-            nWall.position.set(0, 2, -40);
-            scene.add(nWall);
-
-            const sWall = new THREE.Mesh(wallGeo, wallMat);
-            sWall.position.set(0, 2, 40);
-            scene.add(sWall);
-
-            const eWall = new THREE.Mesh(wallGeo, wallMat);
-            eWall.rotation.y = Math.PI / 2;
-            eWall.position.set(40, 2, 0);
-            scene.add(eWall);
-
-            const wWall = new THREE.Mesh(wallGeo, wallMat);
-            wWall.rotation.y = Math.PI / 2;
-            wWall.position.set(-40, 2, 0);
-            scene.add(wWall);
         }
 
         function createPlayer() {
             player = new THREE.Group();
-
-            // 角色主體 (黃色精靈球/皮卡丘意象)
             const bodyGeo = new THREE.SphereGeometry(1, 32, 32);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffca28, roughness: 0.3, metalness: 0.1 });
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffca28 });
             const body = new THREE.Mesh(bodyGeo, bodyMat);
             body.position.y = 1;
             body.castShadow = true;
             player.add(body);
 
-            // 眼睛/正面標記
-            const eyeGeo = new THREE.SphereGeometry(0.2, 16, 16);
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x212121 });
-            
-            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-            leftEye.position.set(0.35, 1.2, 0.85);
-            player.add(leftEye);
-
-            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-            rightEye.position.set(-0.35, 1.2, 0.85);
-            player.add(rightEye);
-
-            // 角色底座光圈
-            const ringGeo = new THREE.RingGeometry(1.1, 1.3, 32);
-            const ringMat = new THREE.MeshBasicMaterial({ color: 0x29b6f6, side: THREE.DoubleSide });
-            const ring = new THREE.Mesh(ringGeo, ringMat);
-            ring.rotation.x = -Math.PI / 2;
-            ring.position.y = 0.03;
-            player.add(ring);
-
             player.position.set(0, 0, 15);
             scene.add(player);
         }
 
+        // 修正後的箭頭指向（從角色朝向滑鼠位置）
         function createAimIndicator() {
             aimArrow = new THREE.Group();
-
-            // 箭頭地面投影
             const shape = new THREE.Shape();
-            shape.moveTo(0, 2);
-            shape.lineTo(0.6, 0);
-            shape.lineTo(0.2, 0);
-            shape.lineTo(0.2, -3);
-            shape.lineTo(-0.2, -3);
-            shape.lineTo(-0.2, 0);
-            shape.lineTo(-0.6, 0);
+            shape.moveTo(0, 0);           // 底部起點
+            shape.lineTo(0.3, 0);
+            shape.lineTo(0.3, 3);         // 箭身長度
+            shape.lineTo(0.7, 3);
+            shape.lineTo(0, 4.5);         // 箭頭尖端朝前方
+            shape.lineTo(-0.7, 3);
+            shape.lineTo(-0.3, 3);
+            shape.lineTo(-0.3, 0);
             shape.closePath();
 
             const geom = new THREE.ShapeGeometry(shape);
-            const mat = new THREE.MeshBasicMaterial({ color: 0xffeb3b, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+            const mat = new THREE.MeshBasicMaterial({ color: 0xffeb3b, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
             const mesh = new THREE.Mesh(geom, mat);
             mesh.rotation.x = -Math.PI / 2;
-            mesh.position.z = 2.5;
-
             aimArrow.add(mesh);
             scene.add(aimArrow);
         }
 
-        function spawnDummies() {
-            const positions = [
+        // 產生 AI 對戰電腦人
+        function spawnBots() {
+            const botPositions = [
                 { x: -10, z: -5 },
                 { x: 10, z: -5 },
-                { x: 0, z: -15 },
-                { x: -15, z: -20 },
-                { x: 15, z: -20 }
+                { x: 0, z: -15 }
             ];
 
-            positions.forEach((pos, idx) => {
-                createDummy(pos.x, pos.z, idx);
+            botPositions.forEach((pos, idx) => {
+                const botGroup = new THREE.Group();
+                const bodyGeo = new THREE.SphereGeometry(1, 16, 16);
+                const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe53935 }); // 紅色敵方
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.position.y = 1;
+                botGroup.add(body);
+
+                botGroup.position.set(pos.x, 0, pos.z);
+                scene.add(botGroup);
+
+                bots.push({
+                    mesh: botGroup,
+                    hp: 500,
+                    maxHp: 500,
+                    alive: true,
+                    respawnTimer: 0,
+                    lastAttack: 0
+                });
             });
         }
 
-        function createDummy(x, z, id) {
-            const dummy = new THREE.Group();
-
-            // 木靶主體
-            const bodyGeo = new THREE.CylinderGeometry(0.8, 0.8, 2.2, 16);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xef5350 });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 1.1;
-            body.castShadow = true;
-            dummy.add(body);
-
-            // 頭部
-            const headGeo = new THREE.SphereGeometry(0.6, 16, 16);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xffcdd2 });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 2.4;
-            dummy.add(head);
-
-            dummy.position.set(x, 0, z);
-            scene.add(dummy);
-
-            dummies.push({
-                mesh: dummy,
-                hp: 600,
-                maxHp: 600,
-                id: id,
-                alive: true,
-                respawnTimer: 0
-            });
-        }
-
-        // -------------------------------------------------------------
-        // 4. 輸入控制 (Keyboard, Mouse & Mobile Joystick)
-        // -------------------------------------------------------------
         function setupInputs() {
-            // 鍵盤按下
             window.addEventListener('keydown', (e) => {
-                const key = e.key.toLowerCase();
-                if (key === 'w' || key === 'arrowup') keys.w = true;
-                if (key === 'a' || key === 'arrowleft') keys.a = true;
-                if (key === 's' || key === 'arrowdown') keys.s = true;
-                if (key === 'd' || key === 'arrowright') keys.d = true;
-
-                // 技能觸發
-                if (key === 'z') castSkillZ();
-                if (key === 'c') castSkillC();
-                if (key === 'v') castSkillV();
-                if (key === 'x') castSkillX();
+                const k = e.key.toLowerCase();
+                if (k === 'w') keys.w = true; if (k === 'a') keys.a = true;
+                if (k === 's') keys.s = true; if (k === 'd') keys.d = true;
+                if (k === 'z') castSkillZ(); if (k === 'c') castSkillC();
+                if (k === 'v') castSkillV(); if (k === 'x') castSkillX();
             });
 
-            // 鍵盤放開
             window.addEventListener('keyup', (e) => {
-                const key = e.key.toLowerCase();
-                if (key === 'w' || key === 'arrowup') keys.w = false;
-                if (key === 'a' || key === 'arrowleft') keys.a = false;
-                if (key === 's' || key === 'arrowdown') keys.s = false;
-                if (key === 'd' || key === 'arrowright') keys.d = false;
+                const k = e.key.toLowerCase();
+                if (k === 'w') keys.w = false; if (k === 'a') keys.a = false;
+                if (k === 's') keys.s = false; if (k === 'd') keys.d = false;
             });
 
-            // 滑鼠移動瞄準
             window.addEventListener('mousemove', (e) => {
                 mousePos.x = (e.clientX / window.innerWidth) * 2 - 1;
                 mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1;
             });
 
-            // 按鈕點擊綁定
             document.getElementById('btn-z').addEventListener('click', castSkillZ);
             document.getElementById('btn-c').addEventListener('click', castSkillC);
             document.getElementById('btn-v').addEventListener('click', castSkillV);
             document.getElementById('btn-x').addEventListener('click', castSkillX);
-
-            // 觸控搖桿邏輯
-            setupJoystick();
-
-            // 視窗 Resize
-            window.addEventListener('resize', onWindowResize);
         }
 
-        let joystickActive = false;
-        let joystickVector = { x: 0, y: 0 };
-
-        function setupJoystick() {
-            const zone = document.getElementById('joystick-zone');
-            const thumb = document.getElementById('joystick-thumb');
-            const maxRadius = 40;
-
-            function handleTouch(evt) {
-                const touch = evt.touches[0];
-                const rect = zone.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const centerY = rect.top + rect.height / 2;
-
-                let dx = touch.clientX - centerX;
-                let dy = touch.clientY - centerY;
-                let dist = Math.hypot(dx, dy);
-
-                if (dist > maxRadius) {
-                    dx = (dx / dist) * maxRadius;
-                    dy = (dy / dist) * maxRadius;
-                }
-
-                thumb.style.transform = `translate(${dx}px, ${dy}px)`;
-                joystickVector.x = dx / maxRadius;
-                joystickVector.y = dy / maxRadius;
-                joystickActive = true;
-            }
-
-            zone.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouch(e); });
-            zone.addEventListener('touchmove', (e) => { e.preventDefault(); handleTouch(e); });
-            zone.addEventListener('touchend', (e) => {
-                thumb.style.transform = `translate(0px, 0px)`;
-                joystickVector = { x: 0, y: 0 };
-                joystickActive = false;
-            });
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        // -------------------------------------------------------------
-        // 5. 技能系統 (Z, C, V, X)
-        // -------------------------------------------------------------
-        // Z: 普通攻擊 (朝滑鼠或最近敵人發射子彈)
         function castSkillZ() {
             if (cooldowns.z.current > 0) return;
             startCooldown('z');
-
-            const dir = mouseAimDir.clone().normalize();
-            createProjectile(player.position.clone().add(new THREE.Vector3(0, 1, 0)), dir, {
-                speed: 0.6,
-                damage: 80,
-                color: 0xffeb3b,
-                size: 0.3,
-                range: 15
-            });
+            createProjectile(player.position.clone().add(new THREE.Vector3(0, 1, 0)), mouseAimDir.clone(), { speed: 0.6, damage: 90, color: 0xffeb3b, size: 0.3, range: 15, isPlayer: true });
         }
 
-        // C: R招式 - 衝鋒 (Dash Attack)
         function castSkillC() {
             if (cooldowns.c.current > 0) return;
             startCooldown('c');
-
-            const dashDir = mouseAimDir.clone().normalize();
-            const dashDistance = 6;
-            
-            // 位移玩家
-            player.position.add(dashDir.clone().multiplyScalar(dashDistance));
-            createParticleBurst(player.position, 0x00e676, 20);
-
-            // 衝鋒傷害判定
-            dummies.forEach(d => {
-                if (d.alive && d.mesh.position.distanceTo(player.position) < 3.5) {
-                    applyDamage(d, 180);
-                }
+            player.position.add(mouseAimDir.clone().multiplyScalar(6));
+            bots.forEach(b => {
+                if (b.alive && b.mesh.position.distanceTo(player.position) < 3.5) applyDamage(b, 180);
             });
         }
 
-        // V: ZR招式 - 瞄準電光炮 (Ranged Skillshot)
         function castSkillV() {
             if (cooldowns.v.current > 0) return;
             startCooldown('v');
-
-            const dir = mouseAimDir.clone().normalize();
-            createProjectile(player.position.clone().add(new THREE.Vector3(0, 1, 0)), dir, {
-                speed: 0.8,
-                damage: 260,
-                color: 0xab47bc,
-                size: 0.7,
-                range: 22
-            });
+            createProjectile(player.position.clone().add(new THREE.Vector3(0, 1, 0)), mouseAimDir.clone(), { speed: 0.8, damage: 280, color: 0xab47bc, size: 0.7, range: 22, isPlayer: true });
         }
 
-        // X: 集結招式 (Unite Move - 廣域大招)
         function castSkillX() {
             if (cooldowns.x.current > 0) return;
             startCooldown('x');
-
-            // 廣域震撼波效果
-            createParticleBurst(player.position, 0xff9800, 50);
-
-            dummies.forEach(d => {
-                if (d.alive && d.mesh.position.distanceTo(player.position) < 9) {
-                    applyDamage(d, 500);
-                }
+            bots.forEach(b => {
+                if (b.alive && b.mesh.position.distanceTo(player.position) < 9) applyDamage(b, 500);
             });
         }
 
-        function startCooldown(key) {
-            cooldowns[key].current = cooldowns[key].max;
-            cooldowns[key].cdEl.classList.remove('hidden');
+        function startCooldown(k) {
+            cooldowns[k].current = cooldowns[k].max;
+            cooldowns[k].cdEl.classList.remove('hidden');
         }
 
         function createProjectile(pos, dir, config) {
@@ -592,28 +317,17 @@
             mesh.position.copy(pos);
             scene.add(mesh);
 
-            projectiles.push({
-                mesh: mesh,
-                dir: dir,
-                speed: config.speed,
-                damage: config.damage,
-                range: config.range,
-                traveled: 0
-            });
+            projectiles.push({ mesh, dir, speed: config.speed, damage: config.damage, range: config.range, traveled: 0, isPlayer: config.isPlayer });
         }
 
-        function applyDamage(dummy, amount) {
-            dummy.hp -= amount;
-            createParticleBurst(dummy.mesh.position, 0xff1744, 8);
-
-            if (dummy.hp <= 0 && dummy.alive) {
-                dummy.alive = false;
-                dummy.mesh.visible = false;
-                dummy.respawnTimer = 5.0; // 5秒後復活
-
-                // 獲得經驗值與擊倒數
+        function applyDamage(target, amount) {
+            target.hp -= amount;
+            if (target.hp <= 0 && target.alive) {
+                target.alive = false;
+                target.mesh.visible = false;
+                target.respawnTimer = 4.0;
                 playerStats.kills += 1;
-                addExp(50);
+                addExp(60);
                 document.getElementById('kill-count').innerText = playerStats.kills;
             }
         }
@@ -626,168 +340,96 @@
                 playerStats.maxExp = Math.floor(playerStats.maxExp * 1.3);
                 playerStats.maxHp += 150;
                 playerStats.hp = playerStats.maxHp;
-
-                // 升級特效
-                createParticleBurst(player.position, 0x00e676, 30);
                 document.getElementById('player-level').innerText = `Lv.${playerStats.level}`;
             }
-
-            // 更新 UI 條
             document.getElementById('hp-text').innerText = `${Math.ceil(playerStats.hp)} / ${playerStats.maxHp}`;
             document.getElementById('hp-bar').style.width = `${(playerStats.hp / playerStats.maxHp) * 100}%`;
             document.getElementById('exp-bar').style.width = `${(playerStats.exp / playerStats.maxExp) * 100}%`;
         }
 
-        function createParticleBurst(pos, color, count) {
-            for (let i = 0; i < count; i++) {
-                const geo = new THREE.SphereGeometry(0.15, 8, 8);
-                const mat = new THREE.MeshBasicMaterial({ color: color });
-                const p = new THREE.Mesh(geo, mat);
-                p.position.copy(pos).add(new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.5,
-                    Math.random() * 0.8,
-                    (Math.random() - 0.5) * 0.5
-                ));
-                
-                const velocity = new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.3,
-                    Math.random() * 0.2 + 0.1,
-                    (Math.random() - 0.5) * 0.3
-                );
-
-                scene.add(p);
-                particles.push({ mesh: p, vel: velocity, life: 1.0 });
-            }
-        }
-
-        // -------------------------------------------------------------
-        // 6. 遊戲核心循環更新 (Update Loop)
-        // -------------------------------------------------------------
         const clock = new THREE.Clock();
 
         function animate() {
             requestAnimationFrame(animate);
-
             const delta = clock.getDelta();
 
-            // 1. 更新遊戲計時器
-            const elapsedSeconds = Math.floor((Date.now() - gameStartTime) / 1000);
-            const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-            const secs = String(elapsedSeconds % 60).padStart(2, '0');
-            document.getElementById('game-time').innerText = `${mins}:${secs}`;
-
-            // 2. 更新玩家移動 (WASD 或 搖桿)
+            // 1. 移動邏輯
             const moveDir = new THREE.Vector3(0, 0, 0);
+            if (keys.w) moveDir.z -= 1; if (keys.s) moveDir.z += 1;
+            if (keys.a) moveDir.x -= 1; if (keys.d) moveDir.x += 1;
+            if (moveDir.length() > 0) player.position.add(moveDir.normalize().multiplyScalar(playerStats.speed));
 
-            if (keys.w) moveDir.z -= 1;
-            if (keys.s) moveDir.z += 1;
-            if (keys.a) moveDir.x -= 1;
-            if (keys.d) moveDir.x += 1;
-
-            if (joystickActive) {
-                moveDir.x = joystickVector.x;
-                moveDir.z = joystickVector.y;
-            }
-
-            if (moveDir.length() > 0) {
-                moveDir.normalize();
-                player.position.add(moveDir.multiplyScalar(playerStats.speed));
-                
-                // 限制在邊界內
-                player.position.x = Math.max(-38, Math.min(38, player.position.x));
-                player.position.z = Math.max(-38, Math.min(38, player.position.z));
-            }
-
-            // 3. 更新滑鼠瞄準方向 (Raycast)
+            // 2. 瞄準方向計算
             raycaster.setFromCamera(mousePos, camera);
             const rayIntersectPoint = new THREE.Vector3();
             if (raycaster.ray.intersectPlane(groundPlane, rayIntersectPoint)) {
                 mouseAimDir.subVectors(rayIntersectPoint, player.position);
                 mouseAimDir.y = 0;
-                
-                if (mouseAimDir.lengthSq() > 0.001) {
-                    mouseAimDir.normalize();
-                    // 轉動玩家模型面向瞄準點
-                    const angle = Math.atan2(mouseAimDir.x, mouseAimDir.z);
-                    player.rotation.y = angle;
-                }
+                if (mouseAimDir.lengthSq() > 0.001) mouseAimDir.normalize();
             }
 
-            // 更新瞄準指示器位置與旋轉
+            // 修正：箭頭朝向 mouseAimDir 正前方
             aimArrow.position.copy(player.position);
             aimArrow.position.y = 0.05;
             aimArrow.rotation.y = Math.atan2(mouseAimDir.x, mouseAimDir.z);
 
-            // 相機跟隨玩家
             camera.position.x = player.position.x;
             camera.position.z = player.position.z + 22;
 
-            // 4. 更新冷卻時間 UI
+            // 3. AI 電腦人追擊邏輯
+            bots.forEach(bot => {
+                if (bot.alive) {
+                    const distToPlayer = bot.mesh.position.distanceTo(player.position);
+                    if (distToPlayer > 3 && distToPlayer < 18) {
+                        const dir = player.position.clone().sub(bot.mesh.position).normalize();
+                        bot.mesh.position.add(dir.multiplyScalar(0.08));
+                    }
+                    // AI 自動攻擊
+                    if (distToPlayer <= 4 && Date.now() - bot.lastAttack > 1500) {
+                        bot.lastAttack = Date.now();
+                        playerStats.hp = Math.max(0, playerStats.hp - 50);
+                        document.getElementById('hp-text').innerText = `${Math.ceil(playerStats.hp)} / ${playerStats.maxHp}`;
+                        document.getElementById('hp-bar').style.width = `${(playerStats.hp / playerStats.maxHp) * 100}%`;
+                    }
+                } else {
+                    bot.respawnTimer -= delta;
+                    if (bot.respawnTimer <= 0) {
+                        bot.alive = true; bot.hp = bot.maxHp; bot.mesh.visible = true;
+                    }
+                }
+            });
+
+            // 4. 子彈與 CD
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.mesh.position.add(p.dir.clone().multiplyScalar(p.speed));
+                p.traveled += p.speed;
+
+                let hit = false;
+                if (p.isPlayer) {
+                    bots.forEach(b => {
+                        if (b.alive && p.mesh.position.distanceTo(b.mesh.position) < 1.2) {
+                            applyDamage(b, p.damage); hit = true;
+                        }
+                    });
+                }
+                if (hit || p.traveled >= p.range) {
+                    scene.remove(p.mesh); projectiles.splice(i, 1);
+                }
+            }
+
             Object.keys(cooldowns).forEach(k => {
                 const cd = cooldowns[k];
                 if (cd.current > 0) {
                     cd.current -= delta;
                     cd.cdEl.innerText = cd.current.toFixed(1);
-                    if (cd.current <= 0) {
-                        cd.current = 0;
-                        cd.cdEl.classList.add('hidden');
-                    }
+                    if (cd.current <= 0) { cd.current = 0; cd.cdEl.classList.add('hidden'); }
                 }
             });
 
-            // 5. 更新子彈彈道
-            for (let i = projectiles.length - 1; i >= 0; i--) {
-                const p = projectiles[i];
-                const step = p.dir.clone().multiplyScalar(p.speed);
-                p.mesh.position.add(step);
-                p.traveled += p.speed;
-
-                // 碰撞檢測 (目標木靶)
-                let hit = false;
-                dummies.forEach(dummy => {
-                    if (dummy.alive && p.mesh.position.distanceTo(dummy.mesh.position) < 1.2) {
-                        applyDamage(dummy, p.damage);
-                        hit = true;
-                    }
-                });
-
-                if (hit || p.traveled >= p.range) {
-                    scene.remove(p.mesh);
-                    projectiles.splice(i, 1);
-                }
-            }
-
-            // 6. 更新粒子動畫
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const pt = particles[i];
-                pt.mesh.position.add(pt.vel);
-                pt.life -= delta * 2;
-                pt.mesh.scale.multiplyScalar(0.95);
-
-                if (pt.life <= 0) {
-                    scene.remove(pt.mesh);
-                    particles.splice(i, 1);
-                }
-            }
-
-            // 7. 更新木靶復活機制
-            dummies.forEach(d => {
-                if (!d.alive) {
-                    d.respawnTimer -= delta;
-                    if (d.respawnTimer <= 0) {
-                        d.alive = true;
-                        d.hp = d.maxHp;
-                        d.mesh.visible = true;
-                        createParticleBurst(d.mesh.position, 0x29b6f6, 15);
-                    }
-                }
-            });
-
-            // 8. 執行 3D 渲染
             renderer.render(scene, camera);
         }
 
-        // 當 DOM 載入完畢後開始執行
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
