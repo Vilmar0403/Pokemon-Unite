@@ -383,8 +383,11 @@
             raycaster.setFromCamera(mousePos, camera);
             const rayIntersectPoint = new THREE.Vector3();
             if (raycaster.ray.intersectPlane(groundPlane, rayIntersectPoint)) {
-                mouseAimDir.subVectors(rayIntersectPoint, player.position);
-                mouseAimDir.y = 0;
+               // 計算從角色出發、朝向滑鼠點擊位置的方向向量
+mouseAimDir.x = rayIntersectPoint.x - player.position.x;
+mouseAimDir.z = rayIntersectPoint.z - player.position.z;
+mouseAimDir.y = 0;
+mouseAimDir.normalize();
                 if (mouseAimDir.lengthSq() > 0.001) mouseAimDir.normalize();
                 player.rotation.y = Math.atan2(mouseAimDir.x, mouseAimDir.z);
             }
