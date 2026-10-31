@@ -120,11 +120,11 @@
     <script>
         let scene, camera, renderer;
         let player, aimArrow;
-        let obstacles = []; // 碰撞障礙物清單
-        let bots = [], wildMonsters = [], energyOrbs = [], projectiles = [];
+        let obstacles = [];
+        let wildMonsters = [], energyOrbs = [], projectiles = [];
         let peer, conn, isConnected = false;
 
-        const playerStats = { hp: 1000, maxHp: 1000, level: 1, exp: 0, maxExp: 100, speed: 0.18, energy: 0, maxEnergy: 30 };
+        const playerStats = { hp: 1000, maxHp: 1000, level: 1, exp: 0, maxExp: 100, speed: 0.18, energy: 0, maxEnergy: 30, radius: 0.9 };
         const gameScores = { team: 0, enemy: 0 };
         const keys = { w: false, a: false, s: false, d: false };
         const mousePos = new THREE.Vector2();
@@ -132,10 +132,9 @@
         const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
         let mouseAimDir = new THREE.Vector3(0, 0, -1);
 
-        let gameSecondsLeft = 600; // 10分鐘 (600秒)
+        let gameSecondsLeft = 600;
         let isFinalStretch = false;
 
-        // 初始化 PeerJS
         const randomId = 'unite_' + Math.floor(1000 + Math.random() * 9000);
         document.getElementById('my-room-input').value = randomId;
 
@@ -164,7 +163,6 @@
             });
         }
 
-        // 初始化 3D 遊戲世界與碰撞地圖
         function initGame() {
             initPeer(randomId);
             const container = document.getElementById('game-container');
@@ -195,15 +193,12 @@
             animate();
         }
 
-        // 建立地圖、得分點與防穿模碰撞障礙物
         function createMapAndCollisions() {
-            // 地面
             const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.9 }));
             ground.rotation.x = -Math.PI / 2;
             ground.receiveShadow = true;
             scene.add(ground);
 
-            // 邊界牆壁 (防止穿模出界)
             const wallMat = new THREE.MeshStandardMaterial({ color: 0x1b5e20 });
             const addWall = (x, z, w, d) => {
                 const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 4, d), wallMat);
@@ -211,12 +206,11 @@
                 scene.add(wall);
                 obstacles.push({ x, z, radius: Math.max(w, d) / 2 });
             };
-            addWall(0, -40, 80, 2); // 北牆
-            addWall(0, 40, 80, 2);  // 南牆
-            addWall(-40, 0, 2, 80); // 西牆
-            addWall(40, 0, 2, 80);  // 東牆
+            addWall(0, -40, 80, 2);
+            addWall(0, 40, 80, 2);
+            addWall(-40, 0, 2, 80);
+            addWall(40, 0, 2, 80);
 
-            // 場地障礙物 (柱子/牆角，角色不能穿過去)
             const addObstacle = (x, z, r) => {
                 const obs = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 3, 16), new THREE.MeshStandardMaterial({ color: 0x388e3c }));
                 obs.position.set(x, 1.5, z);
@@ -228,7 +222,6 @@
             addObstacle(-15, 10, 3);
             addObstacle(15, 10, 3);
 
-            // 敵方得分點 (上方圓圈)
             const goalGeo = new THREE.RingGeometry(3.5, 4, 32);
             const goalMat = new THREE.MeshBasicMaterial({ color: 0xff5252, side: THREE.DoubleSide });
             const enemyGoal = new THREE.Mesh(goalGeo, goalMat);
@@ -243,7 +236,7 @@
             const body = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshStandardMaterial({ color: 0xffca28 }));
             body.position.y = 1;
             player.add(body);
-            player.position.set(0, 0, 25);
+            player.position.set(0, 0, 15); // 設定在安全且無障礙的初始位置
             scene.add(player);
         }
 
@@ -259,12 +252,11 @@
             scene.add(aimArrow);
         }
 
-        // 產生野怪與中央 BOSS
         function spawnWildMonsters() {
             const list = [
                 { x: -10, z: 0, hp: 300, boss: false },
                 { x: 10, z: 0, hp: 300, boss: false },
-                { x: 0, z: -15, hp: 1200, boss: true } // 中央烈空坐 BOSS
+                { x: 0, z: -15, hp: 1200, boss: true }
             ];
             list.forEach(item => {
                 const group = new THREE.Group();
@@ -301,13 +293,12 @@
             document.getElementById('score-btn').addEventListener('click', tryScoreGoal);
         }
 
-        // 投籃得分機制
         function tryScoreGoal() {
             if (playerStats.energy <= 0) return;
             const dist = player.position.distanceTo(window.enemyGoalZone.position);
             if (dist < 5) {
                 let points = playerStats.energy;
-                if (isFinalStretch) points *= 2; // 最後兩分鐘雙倍得分
+                if (isFinalStretch) points *= 2;
                 gameScores.team += points;
                 playerStats.energy = 0;
                 document.getElementById('team-score').innerText = gameScores.team;
@@ -328,7 +319,6 @@
             projectiles.push({ mesh, dir, speed: 0.7, damage: dmg, range, traveled: 0 });
         }
 
-        // 掉落能量球
         function spawnEnergyOrb(pos, val) {
             const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffea00 }));
             mesh.position.copy(pos).y = 0.5;
@@ -342,7 +332,6 @@
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
 
-            // 1. 遊戲倒數計時與最後 2 分鐘機制
             if (gameSecondsLeft > 0) {
                 gameSecondsLeft -= delta;
                 const m = Math.floor(gameSecondsLeft / 60);
@@ -356,40 +345,44 @@
                 }
             }
 
-            // 2. 防穿模移動檢測 (Collision Resolution)
+            // 獨立 X 軸與 Z 軸的滑動碰撞檢測（確保撞牆時往其他方向仍可移動）
             const moveDir = new THREE.Vector3(0, 0, 0);
             if (keys.w) moveDir.z -= 1; if (keys.s) moveDir.z += 1;
             if (keys.a) moveDir.x -= 1; if (keys.d) moveDir.x += 1;
 
             if (moveDir.length() > 0) {
                 moveDir.normalize().multiplyScalar(playerStats.speed);
-                const nextPos = player.position.clone().add(moveDir);
 
-                // 碰撞檢測：檢查是否撞到牆壁或障礙物
-                let collided = false;
+                // 嘗試 X 軸移動
+                const nextPosX = player.position.clone().add(new THREE.Vector3(moveDir.x, 0, 0));
+                let collX = false;
                 for (let obs of obstacles) {
-                    const dist = Math.hypot(nextPos.x - obs.x, nextPos.z - obs.z);
-                    if (dist < obs.radius + 1.0) { // 1.0 為角色半徑
-                        collided = true;
+                    if (Math.hypot(nextPosX.x - obs.x, nextPosX.z - obs.z) < obs.radius + playerStats.radius) {
+                        collX = true;
                         break;
                     }
                 }
-                if (!collided) {
-                    player.position.copy(nextPos);
+                if (!collX) player.position.x = nextPosX.x;
+
+                // 嘗試 Z 軸移動
+                const nextPosZ = player.position.clone().add(new THREE.Vector3(0, 0, moveDir.z));
+                let collZ = false;
+                for (let obs of obstacles) {
+                    if (Math.hypot(nextPosZ.x - obs.x, nextPosZ.z - obs.z) < obs.radius + playerStats.radius) {
+                        collZ = true;
+                        break;
+                    }
                 }
+                if (!collZ) player.position.z = nextPosZ.z;
             }
 
-            // 3. 滑鼠瞄準與旋轉
+            // 正確計算滑鼠瞄準方向（目標點減去角色位置，確保箭頭正確朝向滑鼠）
             raycaster.setFromCamera(mousePos, camera);
             const rayIntersectPoint = new THREE.Vector3();
             if (raycaster.ray.intersectPlane(groundPlane, rayIntersectPoint)) {
-               // 計算從角色出發、朝向滑鼠點擊位置的方向向量
-mouseAimDir.x = rayIntersectPoint.x - player.position.x;
-mouseAimDir.z = rayIntersectPoint.z - player.position.z;
-mouseAimDir.y = 0;
-mouseAimDir.normalize();
+                mouseAimDir.copy(rayIntersectPoint).sub(player.position);
+                mouseAimDir.y = 0;
                 if (mouseAimDir.lengthSq() > 0.001) mouseAimDir.normalize();
-                player.rotation.y = Math.atan2(mouseAimDir.x, mouseAimDir.z);
             }
 
             aimArrow.position.copy(player.position);
@@ -398,14 +391,12 @@ mouseAimDir.normalize();
             camera.position.x = player.position.x;
             camera.position.z = player.position.z + 24;
 
-            // 4. 檢查是否進入得分點範圍
             if (player.position.distanceTo(window.enemyGoalZone.position) < 5 && playerStats.energy > 0) {
                 document.getElementById('score-btn').style.display = 'block';
             } else {
                 document.getElementById('score-btn').style.display = 'none';
             }
 
-            // 5. 拾取能量球
             for (let i = energyOrbs.length - 1; i >= 0; i--) {
                 const orb = energyOrbs[i];
                 if (player.position.distanceTo(orb.pos) < 2.0) {
@@ -416,7 +407,6 @@ mouseAimDir.normalize();
                 }
             }
 
-            // 6. 子彈與野怪碰撞檢測
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 const p = projectiles[i];
                 p.mesh.position.add(p.dir.clone().multiplyScalar(p.speed));
@@ -430,7 +420,7 @@ mouseAimDir.normalize();
                         if (m.hp <= 0 && m.alive) {
                             m.alive = false;
                             m.group.visible = false;
-                            spawnEnergyOrb(m.pos, m.boss ? 15 : 5); // 擊敗野怪掉能量
+                            spawnEnergyOrb(m.pos, m.boss ? 15 : 5);
                         }
                     }
                 });
